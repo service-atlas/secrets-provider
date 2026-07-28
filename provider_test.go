@@ -10,13 +10,13 @@ type mockCache struct {
 	err error
 }
 
-func (m *mockCache) GetSecretStringWithContext(ctx context.Context, secretID string) (string, error) {
+func (m *mockCache) GetSecretStringWithContext(_ context.Context, _ string) (string, error) {
 	return "", m.err
 }
 
 func TestNewProvider_EnvProviderDefault(t *testing.T) {
 	t.Setenv("SECRETS_PROVIDER", "")
-	provider, err := NewProvider(t.Context())
+	provider, err := NewProvider()
 	if err != nil {
 		t.Fatalf("error creating provider. err: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestNewProvider_AWS(t *testing.T) {
 	}
 	defer func() { newSecretCache = oldNewCache }()
 
-	provider, err := NewProvider(t.Context())
+	provider, err := NewProvider()
 	if err != nil {
 		t.Fatalf("error creating provider. err: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestNewProvider_AWS(t *testing.T) {
 
 func TestNewProvider_ExplicitEnv(t *testing.T) {
 	t.Setenv("SECRETS_PROVIDER", "env")
-	provider, err := NewProvider(t.Context())
+	provider, err := NewProvider()
 	if err != nil {
 		t.Fatalf("error creating provider. err: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestNewProvider_AWSError(t *testing.T) {
 	}
 	defer func() { newSecretCache = oldNewCache }()
 
-	_, err := NewProvider(t.Context())
+	_, err := NewProvider()
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
