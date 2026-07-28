@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"testing"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 )
+
+type mockCache struct {
+	err error
+}
+
+func (m *mockCache) GetSecretStringWithContext(ctx context.Context, secretID string) (string, error) {
+	return "", m.err
+}
 
 func TestNewProvider_EnvProviderDefault(t *testing.T) {
 	t.Setenv("SECRETS_PROVIDER", "")
@@ -23,12 +28,12 @@ func TestNewProvider_EnvProviderDefault(t *testing.T) {
 
 func TestNewProvider_AWS(t *testing.T) {
 	t.Setenv("SECRETS_PROVIDER", "aws")
-	// We use a mock loader to avoid side effects and ensure it returns a valid config
-	oldLoader := loadAWSConfig
-	loadAWSConfig = func(ctx context.Context, optFns ...func(*awsconfig.LoadOptions) error) (aws.Config, error) {
-		return aws.Config{}, nil
+	// We use a mock to avoid side effects
+	oldNewCache := newSecretCache
+	newSecretCache = func() (secretCache, error) {
+		return &mockCache{}, nil
 	}
-	defer func() { loadAWSConfig = oldLoader }()
+	defer func() { newSecretCache = oldNewCache }()
 
 	provider, err := NewProvider(t.Context())
 	if err != nil {
@@ -54,17 +59,17 @@ func TestNewProvider_ExplicitEnv(t *testing.T) {
 
 func TestNewProvider_AWSError(t *testing.T) {
 	t.Setenv("SECRETS_PROVIDER", "aws")
-	oldLoader := loadAWSConfig
-	loadAWSConfig = func(ctx context.Context, optFns ...func(*awsconfig.LoadOptions) error) (aws.Config, error) {
-		return aws.Config{}, fmt.Errorf("forced error")
+	oldNewCache := newSecretCache
+	newSecretCache = func() (secretCache, error) {
+		return nil, fmt.Errorf("forced error")
 	}
-	defer func() { loadAWSConfig = oldLoader }()
+	defer func() { newSecretCache = oldNewCache }()
 
 	_, err := NewProvider(t.Context())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if err.Error() != "loading AWS config: forced error" {
-		t.Errorf("expected error %q, got %q", "loading AWS config: forced error", err.Error())
+	if err.Error() != "creating secret cache: forced error" {
+		t.Errorf("expected error %q, got %q", "creating secret cache: forced error", err.Error())
 	}
 }

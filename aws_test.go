@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-secretsmanager-caching-go/v2/secretcache"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -64,7 +65,13 @@ func TestAWSProvider_Integration(t *testing.T) {
 		o.BaseEndpoint = aws.String(endpoint)
 	})
 
-	provider := &AWSProvider{client: client}
+	cache, err := secretcache.New()
+	if err != nil {
+		t.Fatalf("failed to create secret cache: %v", err)
+	}
+	cache.Client = client
+
+	provider := &AWSProvider{cache: cache}
 
 	t.Run("GetSecret", func(t *testing.T) {
 		secretName := "my-test-secret"
@@ -132,12 +139,12 @@ func TestAWSProvider_Integration(t *testing.T) {
 		}
 	})
 
-	t.Run("GetSecret_NilSecretString", func(t *testing.T) {
-		secretName := "binary-secret"
+	t.Run("GetSecret_EmptySecretString", func(t *testing.T) {
+		secretName := "empty-secret"
 		// Create a secret with SecretBinary instead of SecretString
 		_, err := client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 			Name:         aws.String(secretName),
-			SecretBinary: []byte("binary-data"),
+			SecretString: aws.String(""),
 		})
 		if err != nil {
 			t.Fatalf("failed to create binary secret in ministack: %v", err)

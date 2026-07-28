@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-secretsmanager-caching-go/v2/secretcache"
 )
 
 type DatabaseInfo struct {
@@ -20,16 +19,18 @@ type Provider interface {
 	GetDatabaseInfo(ctx context.Context) (DatabaseInfo, error)
 }
 
-var loadAWSConfig = awsconfig.LoadDefaultConfig
+var newSecretCache = func() (secretCache, error) {
+	return secretcache.New()
+}
 
 func NewProvider(ctx context.Context) (Provider, error) {
 	switch os.Getenv("SECRETS_PROVIDER") {
 	case "aws":
-		cfg, err := loadAWSConfig(ctx)
+		cache, err := newSecretCache()
 		if err != nil {
-			return nil, fmt.Errorf("loading AWS config: %w", err)
+			return nil, fmt.Errorf("creating secret cache: %w", err)
 		}
-		return &AWSProvider{client: secretsmanager.NewFromConfig(cfg)}, nil
+		return &AWSProvider{cache: cache}, nil
 	default:
 		return &EnvProvider{}, nil
 	}

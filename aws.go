@@ -5,26 +5,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )
 
+type secretCache interface {
+	GetSecretStringWithContext(ctx context.Context, secretID string) (string, error)
+}
+
 type AWSProvider struct {
-	client *secretsmanager.Client
+	cache secretCache
 }
 
 func (p *AWSProvider) GetSecret(ctx context.Context, name string) (string, error) {
-	out, err := p.client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(name),
-	})
+	out, err := p.cache.GetSecretStringWithContext(ctx, name)
 	if err != nil {
 		return "", fmt.Errorf("fetching secret %q from AWS: %w", name, err)
 	}
-	if out.SecretString == nil {
+	if out == "" {
 		return "", fmt.Errorf("secret %q has no string value", name)
 	}
-	return *out.SecretString, nil
+	return out, nil
 }
 
 func (p *AWSProvider) GetDatabaseInfo(ctx context.Context) (DatabaseInfo, error) {
