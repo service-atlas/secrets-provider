@@ -1,4 +1,5 @@
 # secrets-provider
+![Coverage](https://img.shields.io/badge/Coverage-100.0%25-brightgreen)
 
 A Go library for retrieving secrets and database configuration from various providers (Environment variables or AWS Secrets Manager).
 
